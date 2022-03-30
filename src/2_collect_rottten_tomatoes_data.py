@@ -1,5 +1,5 @@
 from pyspark import SparkContext
-from movie_requests import get_rt_scores
+from movie_requests import get_rt_data
 
 INPUT = 'data/movies.tsv'
 OUTPUT = 'data/rotton_tomatoes.tsv'

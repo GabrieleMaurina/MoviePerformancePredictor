@@ -3,6 +3,8 @@ from re import compile as cmp
 from json import dumps, loads
 from sys import argv
 
+TIMEOUT = 3
+
 BOM_BASE = 'https://www.boxofficemojo.com'
 BOM_SEARCH = 'https://www.boxofficemojo.com/search/?q='
 BOM_LINK = cmp(r'<a class="a-size-medium a-link-normal a-text-bold" href="(\/title\/tt\S+)">')
@@ -16,11 +18,11 @@ def get_bom_data(movie):
         #first request to BoxOfficeMojo to search the movie
         tokens = movie.lower().split()
         query = BOM_SEARCH + '+'.join(tokens)
-        res = get(query).text
+        res = get(query, timeout=TIMEOUT).text
         
         #second request to BoxOfficeMojo to view data of specific movie
         link = BOM_BASE + BOM_LINK.search(res).group(1)
-        res = get(link).text
+        res = get(link, timeout=TIMEOUT).text
         money = BOM_MONEY.findall(res)
         box_office = int(money[2].replace(',',''))
         budget = int(money[4].replace(',',''))
@@ -33,7 +35,7 @@ def get_rt_data(movie):
         payload = dict(RT_PAYLOAD)
         payload['requests'][0]['query'] = movie
         payload['requests'][1]['query'] = movie
-        res = post(RT_SEARCH, data=dumps(payload)).json()
+        res = post(RT_SEARCH, data=dumps(payload), timeout=TIMEOUT).json()
         scores = res['results'][0]['hits'][0]['rottenTomatoes']
         return (scores['audienceScore'], scores['criticsScore'])
     except Exception:

@@ -15,7 +15,7 @@ def titleId(v):
     return v[0] != 'titleId'
 
 def main():
-    sc = SparkContext('local', '4_join_data')
+    sc = SparkContext('local', '3_join_data')
     sc.setLogLevel('ERROR')
 
     movies = sc.textFile('/content/data/movies.tsv').map(tsv).filter(tconst).map(lambda v: v[0])

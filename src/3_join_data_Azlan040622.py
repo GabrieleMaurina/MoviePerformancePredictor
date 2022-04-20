@@ -29,6 +29,8 @@ def main():
     principals = sc.textFile('/content/data/title.principals.tsv').map(tsv).filter(tconst)
     rating = sc.textFile('/content/data/title.rating.tsv').map(tsv).filter(tconst)
     name = sc.textFile('/content/data/name.basics.tsv').map(tsv).filter(nconst)
+    scraped = sc.textFile('/content/data/scraped.tsv').map(tsv)
+
 
     # Azlan addition 4/6/2022
     basics_2 = spark.read.csv('title_basics.tsv', sep=r'\t', header=True).select('tconst','primaryTitle','startYear','runTimeMinutes','genres')
@@ -49,13 +51,16 @@ def main():
     new_4 = new_3.join(principals_2, new_3.tconst == principals_2.tconst1, "inner").drop("tconst1")
     principals_2.unpersist()
     new_3.unpersist()
+    scr = spark.read.csv('scraped.tsv', sep=r'\t', header=True).select('tconst', 'box_office', 'budget', 'audience_score', 'critics_score').selectExpr('tconst as tconst1', 'box_office as box_office', 'budget as budget', 'audience_score as audience_score', 'critics_score as critics_score')
+    
+    new_5 = new_4.join(scr, new_4.tconst == scraped.tconst1, "inner").drop("tconst1")
+    scr.unpersist()
+    new_5.head(5)
 
-    new_4.head(5)
 
 
-
-    basics.join(crew).take(10)
-    basics.join(movies).take(10)
+    #basics.join(crew).take(10)
+    #basics.join(movies).take(10)
 
 if __name__ == '__main__':
     main()

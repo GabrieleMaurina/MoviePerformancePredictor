@@ -53,12 +53,12 @@ def main():
     new_3.unpersist()
     scr = spark.read.csv('scraped.tsv', sep=r'\t', header=True).select('tconst', 'box_office', 'budget', 'audience_score', 'critics_score').selectExpr('tconst as tconst1', 'box_office as box_office', 'budget as budget', 'audience_score as audience_score', 'critics_score as critics_score')
     
-    new_5 = new_4.join(scr, new_4.tconst == scraped.tconst1, "inner").drop("tconst1")
+    # Join scraped data from BoxOfficeMojo and Rotten Tomatoes
+    scr = spark.read.csv('scraped.tsv', sep=r'\t', header=True).select('tconst', 'box_office', 'budget', 'audience_score', 'critics_score').selectExpr('tconst as tconst1', 'box_office as box_office', 'budget as budget', 'audience_score as audience_score', 'critics_score as critics_score')
+    new_5 = new_4.join(scr, new_4.tconst == scr.tconst1, "inner").drop("tconst1")
     scr.unpersist()
+    new_4.unpersist()
     new_5.head(5)
-
-
-
     #basics.join(crew).take(10)
     #basics.join(movies).take(10)
 

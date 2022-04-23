@@ -71,13 +71,13 @@ def main():
     "Romance", "Sci-Fi", "Short", "Sport", "Talk-Show", "Thriller", "War", "Western"]
     for i in gen:
         new_5 = new_5.withColumn(i, when(new_5['genres'].contains(i), 1).otherwise(0))
-        new_5.show()
+    #new_5.show()
     
     # Encoding cast and crew (directors, writers, actors)
-    nconst_en = new_6.select("nconst").distinct().rdd.flatMap(lambda x: x).collect()
+    nconst_en = new_5.select("nconst").distinct().rdd.flatMap(lambda x: x).collect()
     crew = [F.when(F.col("nconst") == cr, 1).otherwise(0).alias("nconst_" + cr) for cr in nconst_en]
-    new_7 = new_6.select("tconst", "primaryTitle", "startYear", "runTimeMinutes", "averageRating", "numVotes", "box_office", "budget", "audience_score", "critics_score", *crew)
-    new_7.head(1)
+    new_6 = new_5.select("tconst", "primaryTitle", "startYear", "runTimeMinutes", "averageRating", "numVotes", "box_office", "budget", "audience_score", "critics_score", *crew)
+    new_6.head(10)
 
 if __name__ == '__main__':
     main()

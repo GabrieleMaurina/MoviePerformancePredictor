@@ -1,6 +1,8 @@
 from pyspark import SparkContext
 from pyspark.sql.types import IntegerType
 from pyspark.sql.session import SparkSession
+from pyspark.sql.functions import countDistinct
+from pyspark.sql.functions import when
 import pyspark.sql.functions as F
 
 OUTPUT = 'data/data.tsv'
@@ -32,7 +34,7 @@ def main():
     scraped = sc.textFile('/content/data/scraped.tsv').map(tsv)
 
 
-    # Azlan addition 4/6/2022
+    # Join all IMDB data files, filter for columns and drop columns
     basics_2 = spark.read.csv('title_basics.tsv', sep=r'\t', header=True).select('tconst','primaryTitle','startYear','runTimeMinutes','genres')
     basics_2 = basics_2.withColumn("runTimeMinutes", basics_2["runTimeMinutes"].cast(IntegerType())).filter(basics_2.runTimeMinutes > 30) # filtering out movies less than 30 minutes
     movies_2 = spark.read.csv('movies.tsv', sep=r'\t', header=True).select('tconst').selectExpr("tconst as tconst1")
@@ -58,9 +60,24 @@ def main():
     new_5 = new_4.join(scr, new_4.tconst == scr.tconst1, "inner").drop("tconst1")
     scr.unpersist()
     new_4.unpersist()
-    new_5.head(5)
-    #basics.join(crew).take(10)
-    #basics.join(movies).take(10)
+    new_5 = new_5.withColumn("startYear", new_5["startYear"].cast(IntegerType())).filter(new_5.startYear >= 1990) # filtering out movies before 1990 (remaining 158K movies)
+    
+    # Drop movies with no associated RT or BoxOffice records
+    new_5 = new_5.na.drop(subset=["audience_score","critics_score","box_office"]).show(truncate=False)
+    
+    # Encoding genres
+    gen = ["Action", "Adult", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", 
+    "Fantasy", "FilmNoir", "GameShow", "History", "Horror", "Musical", "Music", "Mystery", "News", "Reality-TV", 
+    "Romance", "Sci-Fi", "Short", "Sport", "Talk-Show", "Thriller", "War", "Western"]
+    for i in gen:
+        new_5 = new_5.withColumn(i, when(new_5['genres'].contains(i), 1).otherwise(0))
+        new_5.show()
+    
+    # Encoding cast and crew (directors, writers, actors)
+    nconst_en = new_6.select("nconst").distinct().rdd.flatMap(lambda x: x).collect()
+    crew = [F.when(F.col("nconst") == cr, 1).otherwise(0).alias("nconst_" + cr) for cr in nconst_en]
+    new_7 = new_6.select("tconst", "primaryTitle", "startYear", "runTimeMinutes", "averageRating", "numVotes", "box_office", "budget", "audience_score", "critics_score", *crew)
+    new_7.head(1)
 
 if __name__ == '__main__':
     main()

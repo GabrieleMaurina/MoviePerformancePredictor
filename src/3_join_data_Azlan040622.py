@@ -74,10 +74,9 @@ def main():
     #new_5.show()
     
     # Encoding cast and crew (directors, writers, actors)
-    nconst_en = new_5.select("nconst").distinct().rdd.flatMap(lambda x: x).collect()
-    crew = [F.when(F.col("nconst") == cr, 1).otherwise(0).alias("nconst_" + cr) for cr in nconst_en]
-    new_6 = new_5.select("tconst", "primaryTitle", "startYear", "runTimeMinutes", "averageRating", "numVotes", "box_office", "budget", "audience_score", "critics_score", *crew)
-    new_6.head(10)
+    for i in new_6.select("category").distinct().collect():
+        new_6 = new_6.withColumn(i, when(new_6['category'].contains(i), nconst).otherwise(0))
+    new_6.show()
 
 if __name__ == '__main__':
     main()

@@ -51,17 +51,13 @@ def main():
     counts = title_akas.groupBy('titleId').count() #count how many releases
     title_akas = originals.join(counts, 'titleId') #join data in one dataframe
 
-    scr = spark.read.csv('scraped.tsv', sep=r'\t', header=True).select('tconst', 'box_office', 'budget', 'audience_score', 'critics_score').selectExpr('tconst as tconst1', 'box_office as box_office', 'budget as budget', 'audience_score as audience_score', 'critics_score as critics_score')
-
-    # Join scraped data from BoxOfficeMojo and Rotten Tomatoes
-    scr = spark.read.csv('scraped.tsv', sep=r'\t', header=True).select('tconst', 'box_office', 'budget', 'audience_score', 'critics_score').selectExpr('tconst as tconst1', 'box_office as box_office', 'budget as budget', 'audience_score as audience_score', 'critics_score as critics_score')
-    new_5 = new_4.join(scr, new_4.tconst == scr.tconst1, "inner").drop("tconst1")
-    scr.unpersist()
-    new_4.unpersist()
-    new_5 = new_5.withColumn("startYear", new_5["startYear"].cast(IntegerType())).filter(new_5.startYear >= 1990) # filtering out movies before 1990 (remaining 158K movies)
-
-    # Drop movies with no associated RT or BoxOffice records
-    new_5 = new_5.na.drop(subset=["audience_score","critics_score","box_office"]).show(truncate=False)
+    #scraped
+    scraped = spark.read.csv('data/scraped.tsv', sep=r'\t', header=True)
+    scraped = scraped.withColumn('box_office', scraped.box_office.cast(IntegerType())) #cast box_office to int
+    scraped = scraped.withColumn('budget', scraped.budget.cast(IntegerType())) #cast budget to int
+    scraped = scraped.withColumn('audience_score', scraped.audience_score.cast(IntegerType())) #cast audience_score to int
+    scraped = scraped.withColumn('critics_score', scraped.critics_score.cast(IntegerType())) #cast critics_score to int
+    scraped = scraped.na.drop() #remove rows with null values
 
     # Encoding genres
     gen = ["Action", "Adult", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family",

@@ -50,6 +50,7 @@ def main():
     originals = originals.select('titleId', 'region', 'language') #get original region and original language
     counts = title_akas.groupBy('titleId').count() #count how many releases
     title_akas = originals.join(counts, 'titleId') #join data in one dataframe
+    title_akas = title_akas.withColumnRenamed('titleId', 'tconst') #rename titleId to tconst as in the other tables
 
     #scraped
     scraped = spark.read.csv('data/scraped.tsv', sep=r'\t', header=True)
@@ -58,6 +59,12 @@ def main():
     scraped = scraped.withColumn('audience_score', scraped.audience_score.cast(IntegerType())) #cast audience_score to int
     scraped = scraped.withColumn('critics_score', scraped.critics_score.cast(IntegerType())) #cast critics_score to int
     scraped = scraped.na.drop() #remove rows with null values
+
+    #joins
+    data = scraped.join(title_basics, 'tconst')
+    data = data.join(title_crew, 'tconst')
+    data = data.join(title_ratings, 'tconst')
+    data = data.join(title_akas, 'tconst')
 
     # Encoding genres
     gen = ["Action", "Adult", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family",

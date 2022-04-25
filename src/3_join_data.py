@@ -1,9 +1,7 @@
 from pyspark import SparkContext
-from pyspark.sql.types import IntegerType
+from pyspark.sql.types import IntegerType, FloatType
 from pyspark.sql.session import SparkSession
-from pyspark.sql.functions import countDistinct
-from pyspark.sql.functions import when
-import pyspark.sql.functions as F
+from pyspark.sql.functions import split, when, array_contains
 
 OUTPUT = 'data/data.tsv'
 
@@ -19,8 +17,9 @@ def main():
     title_basics = title_basics.filter(title_basics.titleType == 'movie') #remove non-movies
     title_basics = title_basics.filter(title_basics.isAdult == '0') #remove porn
     title_basics = title_basics.filter(title_basics.runtimeMinutes > 30) #remove short movies
-    title_basics = title_basics.filter(title_basics.startYear > 2000) #remove pre-2000 movies
+    title_basics = title_basics.filter(title_basics.startYear > 1980) #remove pre-1980 movies
     title_basics = title_basics.filter(title_basics.startYear < 2020) #remove post-2019 movies
+    title_basics = title_basics.withColumn('genres', split(title_basics.genres, ',')) #split list of genres
     title_basics = title_basics.select('tconst','primaryTitle','startYear','runtimeMinutes','genres') #remove unecessary columns
 
     #crew
@@ -46,6 +45,7 @@ def main():
     title_akas = spark.read.csv('data/title_akas.tsv', sep=r'\t', header=True)
     title_akas = title_akas.withColumnRenamed('titleId', 'tconst') #rename titleId to tconst as in the other tables
     title_akas = title_akas.groupBy('tconst').count() #count how many releases
+    title_akas = title_akas.withColumnRenamed('count', 'releases') #rename count to releases
 
     #scraped
     scraped = spark.read.csv('data/scraped.tsv', sep=r'\t', header=True)
@@ -61,13 +61,14 @@ def main():
     data = data.join(title_ratings, 'tconst')
     data = data.join(title_akas, 'tconst')
 
-    # Encoding genres
-    gen = ["Action", "Adult", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family",
-    "Fantasy", "FilmNoir", "GameShow", "History", "Horror", "Musical", "Music", "Mystery", "News", "Reality-TV",
-    "Romance", "Sci-Fi", "Short", "Sport", "Talk-Show", "Thriller", "War", "Western"]
-    for i in gen:
-        new_5 = new_5.withColumn(i, when(new_5['genres'].contains(i), 1).otherwise(0))
-    #new_5.show()
+    #encoding genres
+    GENRES = ('Action', 'Adult', 'Adventure', 'Animation', 'Biography',
+        'Comedy','Crime', 'Documentary', 'Drama', 'Family', 'Fantasy', 'History',
+        'Horror', 'Musical', 'Music', 'Mystery', 'News', 'Reality-TV', 'Romance',
+        'Sci-Fi', 'Sport', 'Talk-Show', 'Thriller', 'War', 'Western')
+    for genre in GENRES:
+        data = data.withColumn(genre, when(array_contains('genres', genre), 1).otherwise(0)) #add a column for each genre
+    data = data.drop('genres') #remove genres column
 
     # Encoding cast and crew (directors, writers, actors)
     for i in new_6.select("category").distinct().collect():

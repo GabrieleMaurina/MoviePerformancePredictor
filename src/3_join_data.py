@@ -12,27 +12,29 @@ def main():
     sc.setLogLevel('ERROR')
     spark = SparkSession(sc)
 
-    # Join all IMDB data files, filter for columns and drop columns
+    #title_basics
     title_basics = spark.read.csv('data/title_basics.tsv', sep=r'\t', header=True)
-    title_basics = title_basics.withColumn('startYear', title_basics['startYear'].cast(IntegerType())) #cast year to int
-    title_basics = title_basics.withColumn('runTimeMinutes', title_basics['runTimeMinutes'].cast(IntegerType())) #cast runTimeMinutes to int
+    title_basics = title_basics.withColumn('startYear', title_basics.startYear.cast(IntegerType())) #cast year to int
+    title_basics = title_basics.withColumn('runtimeMinutes', title_basics.runtimeMinutes.cast(IntegerType())) #cast runtimeMinutes to int
     title_basics = title_basics.filter(title_basics.titleType == 'movie') #remove non-movies
     title_basics = title_basics.filter(title_basics.isAdult == '0') #remove porn
-    title_basics = title_basics.filter(title_basics.runTimeMinutes > 30) #remove short movies
+    title_basics = title_basics.filter(title_basics.runtimeMinutes > 30) #remove short movies
     title_basics = title_basics.filter(title_basics.startYear > 2000) #remove pre-2000 movies
-    title_basics = title_basics.select('tconst','primaryTitle','startYear','runTimeMinutes','genres')
-    movies_2 = spark.read.csv('movies.tsv', sep=r'\t', header=True).select('tconst').selectExpr("tconst as tconst1")
-    new = movies_2.join(basics_2, basics_2.tconst == movies_2.tconst1, "inner").drop("tconst1")
-    basics_2.unpersist()
-    movies_2.unpersist()
-    crew_2 = spark.read.csv('title_crew.tsv', sep=r'\t', header=True).select('tconst','directors','writers').selectExpr("tconst as tconst1",'directors as directors', 'writers as writers')
-    new_2 = new.join(crew_2, new.tconst == crew_2.tconst1, "inner").drop("tconst1")
-    crew_2.unpersist()
-    new.unpersist()
-    ratings_2 = spark.read.csv('title_ratings.tsv', sep=r'\t', header=True).select('tconst','averageRating','numVotes').selectExpr("tconst as tconst1",'averageRating as averageRating', 'numVotes as numVotes')
-    new_3 = new_2.join(ratings_2, new_2.tconst == ratings_2.tconst1, "inner").drop("tconst1")
-    ratings_2.unpersist()
-    new_2.unpersist()
+    title_basics = title_basics.filter(title_basics.startYear < 2020) #remove post-2019 movies
+    title_basics = title_basics.select('tconst','primaryTitle','startYear','runtimeMinutes','genres') #remove unecessary columns
+
+    #crew
+    title_crew = spark.read.csv('data/title_crew.tsv', sep=r'\t', header=True)
+    title_crew = title_crew.filter(title_crew.directors != '\\N') #remove movies with no director
+    title_crew = title_crew.filter(title_crew.writers != '\\N') #remove movies with no writer
+    title_crew = title_crew.withColumn('directors', split(title_crew.directors, ',')) #split list of directors
+    title_crew = title_crew.withColumn('writers', split(title_crew.writers, ',')) #split list of writers
+
+    #title_ratings
+    title_ratings = spark.read.csv('data/title_ratings.tsv', sep=r'\t', header=True)
+    title_ratings = title_ratings.withColumn('averageRating', title_ratings.averageRating.cast(FloatType())) #cast averageRating to float
+    title_ratings = title_ratings.withColumn('numVotes', title_ratings.numVotes.cast(IntegerType())) #cast numVotes to int
+
     principals_2 = spark.read.csv('title_principals.tsv', sep=r'\t', header=True).select('tconst','nconst','category','job', 'characters').selectExpr("tconst as tconst1",'nconst as nconst', 'category as category', 'job as job', 'characters as characters')
     new_4 = new_3.join(principals_2, new_3.tconst == principals_2.tconst1, "inner").drop("tconst1")
     principals_2.unpersist()

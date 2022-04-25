@@ -35,10 +35,22 @@ def main():
     title_ratings = title_ratings.withColumn('averageRating', title_ratings.averageRating.cast(FloatType())) #cast averageRating to float
     title_ratings = title_ratings.withColumn('numVotes', title_ratings.numVotes.cast(IntegerType())) #cast numVotes to int
 
-    principals_2 = spark.read.csv('title_principals.tsv', sep=r'\t', header=True).select('tconst','nconst','category','job', 'characters').selectExpr("tconst as tconst1",'nconst as nconst', 'category as category', 'job as job', 'characters as characters')
-    new_4 = new_3.join(principals_2, new_3.tconst == principals_2.tconst1, "inner").drop("tconst1")
-    principals_2.unpersist()
-    new_3.unpersist()
+    #title_principals
+    title_principals = spark.read.csv('data/title_principals.tsv', sep=r'\t', header=True)
+    title_principals = title_principals.filter(title_principals.category != 'self') #remove 'self'
+    title_principals = title_principals.filter(title_principals.category != 'director') #remove directors
+    title_principals = title_principals.filter(title_principals.category != 'writer') #remove writer
+    title_principals = title_principals.select('tconst', 'nconst', 'category') #remove unecessary columns
+
+    #title_akas
+    title_akas = spark.read.csv('data/title_akas.tsv', sep=r'\t', header=True)
+    originals = title_akas.filter(title_akas.isOriginalTitle == '1') #get original releases
+    originals = originals.filter(originals.region != '\\N') #remove movies with no region
+    originals = originals.filter(originals.language != '\\N') #remove movies with no language
+    originals = originals.select('titleId', 'region', 'language') #get original region and original language
+    counts = title_akas.groupBy('titleId').count() #count how many releases
+    title_akas = originals.join(counts, 'titleId') #join data in one dataframe
+
     scr = spark.read.csv('scraped.tsv', sep=r'\t', header=True).select('tconst', 'box_office', 'budget', 'audience_score', 'critics_score').selectExpr('tconst as tconst1', 'box_office as box_office', 'budget as budget', 'audience_score as audience_score', 'critics_score as critics_score')
 
     # Join scraped data from BoxOfficeMojo and Rotten Tomatoes

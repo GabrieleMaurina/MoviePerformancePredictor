@@ -44,13 +44,8 @@ def main():
 
     #title_akas
     title_akas = spark.read.csv('data/title_akas.tsv', sep=r'\t', header=True)
-    originals = title_akas.filter(title_akas.isOriginalTitle == '1') #get original releases
-    originals = originals.filter(originals.region != '\\N') #remove movies with no region
-    originals = originals.filter(originals.language != '\\N') #remove movies with no language
-    originals = originals.select('titleId', 'region', 'language') #get original region and original language
-    counts = title_akas.groupBy('titleId').count() #count how many releases
-    title_akas = originals.join(counts, 'titleId') #join data in one dataframe
     title_akas = title_akas.withColumnRenamed('titleId', 'tconst') #rename titleId to tconst as in the other tables
+    title_akas = title_akas.groupBy('tconst').count() #count how many releases
 
     #scraped
     scraped = spark.read.csv('data/scraped.tsv', sep=r'\t', header=True)

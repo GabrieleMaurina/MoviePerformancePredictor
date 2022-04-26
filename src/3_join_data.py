@@ -2,6 +2,7 @@ from pyspark import SparkContext
 from pyspark.sql.types import IntegerType, FloatType
 from pyspark.sql.session import SparkSession
 from pyspark.sql.functions import split, when, array_contains
+from pyspark.sql.functions import *
 
 OUTPUT = 'data/data.tsv'
 
@@ -69,11 +70,52 @@ def main():
     for genre in GENRES:
         data = data.withColumn(genre, when(array_contains('genres', genre), 1).otherwise(0)) #add a column for each genre
     data = data.drop('genres') #remove genres column
+    
+    #addition for principals (Azlan 4/25/2022)
+    title_crew = title_crew.withColumn("directors", concat_ws(",",col("directors")))
+    title_crew = title_crew.withColumn("writers", concat_ws(",",col("writers")))
 
+    title_crew = title_crew.withColumn('director_1', split(title_crew['directors'], ',').getItem(0)) \
+           .withColumn('director_2', split(title_crew['directors'], ',').getItem(1)) 
+
+    title_crew = title_crew.withColumn('writer_1', split(title_crew['writers'], ',').getItem(0)) \
+           .withColumn('writer_2', split(title_crew['writers'], ',').getItem(1)) \
+           .withColumn('writer_3', split(title_crew['writers'], ',').getItem(2))
+
+    title_crew = title_crew.withColumn('writer_1', concat(col('writer_1'), lit(',writer,'), col('tconst'))) \
+           .withColumn('writer_2', concat(col('writer_2'), lit(',writer,'), col('tconst'))) \
+           .withColumn('writer_3', concat(col('writer_3'), lit(',writer,'), col('tconst')))
+
+    title_crew = title_crew.withColumn('director_1', concat(col('director_1'), lit(',director,'), col('tconst'))) \
+         .withColumn('director_2', concat(col('director_2'), lit(',director,'), col('tconst'))) 
+    
+    crew_final = title_crew.select(explode(array(
+            col("director_1"),
+            col("director_2"), 
+            col("writer_1"),
+            col("writer_2"),
+            col("writer_3")))).distinct()
+
+    crew_final = crew_final.withColumn('tconst1', split(crew_final['col'], ',').getItem(2)) \
+          .withColumn('nconst', split(crew_final['col'], ',').getItem(0)) \
+          .withColumn('category', split(crew_final['col'], ',').getItem(1)).select('tconst1', 'nconst', 'category')
+    
+    principals = title_principals.join(crew_final, crew_final.tconst1 == title_principals.tconst).drop('tconst1') # if movie doesn't have director or writer, removed here
+    principals = principals.join(title_ratings, title_ratings.tconst == principals.tconst)
+    principals = principals.withColumnRenamed(principals.columns[0], "tconst1") \
+        .withColumnRenamed(principals.columns[1], "nconst1") \
+        .withColumnRenamed(principals.columns[2], "category1") \
+        .withColumnRenamed(principals.columns[3], "nconst2") \
+        .withColumnRenamed(principals.columns[4], "category2") \
+        .withColumnRenamed(principals.columns[5], "tconst2") \
+        .withColumnRenamed(principals.columns[6], "averageRating") \
+        .withColumnRenamed(principals.columns[7], "numVotes")
+    
+    
     # Encoding cast and crew (directors, writers, actors)
-    for i in new_6.select("category").distinct().collect():
-        new_6 = new_6.withColumn(i, when(new_6['category'].contains(i), nconst).otherwise(0))
-    new_6.show()
+    #for i in new_6.select("category").distinct().collect():
+    #    new_6 = new_6.withColumn(i, when(new_6['category'].contains(i), nconst).otherwise(0))
+    #new_6.show()
 
 if __name__ == '__main__':
     main()

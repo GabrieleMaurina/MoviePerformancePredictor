@@ -1,7 +1,7 @@
 from pyspark import SparkContext
 from pyspark.sql.types import IntegerType, FloatType
 from pyspark.sql.session import SparkSession
-from pyspark.sql.functions import split, when, array_contains
+import pyspark.sql.functions as sqlf
 from cpi import inflate
 
 
@@ -21,15 +21,15 @@ def main():
     title_basics = title_basics.filter(title_basics.runtimeMinutes > 30) #remove short movies
     title_basics = title_basics.filter(title_basics.startYear > 1980) #remove pre-1980 movies
     title_basics = title_basics.filter(title_basics.startYear < 2020) #remove post-2019 movies
-    title_basics = title_basics.withColumn('genres', split(title_basics.genres, ',')) #split list of genres
+    title_basics = title_basics.withColumn('genres', sqlf.split(title_basics.genres, ',')) #split list of genres
     title_basics = title_basics.select('tconst','primaryTitle','startYear','runtimeMinutes','genres') #remove unecessary columns
 
     #crew
     title_crew = spark.read.csv('data/title_crew.tsv', sep=r'\t', header=True)
     title_crew = title_crew.filter(title_crew.directors != '\\N') #remove movies with no director
     title_crew = title_crew.filter(title_crew.writers != '\\N') #remove movies with no writer
-    title_crew = title_crew.withColumn('directors', split(title_crew.directors, ',')) #split list of directors
-    title_crew = title_crew.withColumn('writers', split(title_crew.writers, ',')) #split list of writers
+    title_crew = title_crew.withColumn('directors', sqlf.split(title_crew.directors, ',')) #split list of directors
+    title_crew = title_crew.withColumn('writers', sqlf.split(title_crew.writers, ',')) #split list of writers
 
     #title_ratings
     title_ratings = spark.read.csv('data/title_ratings.tsv', sep=r'\t', header=True)
@@ -39,9 +39,15 @@ def main():
     #title_principals
     title_principals = spark.read.csv('data/title_principals.tsv', sep=r'\t', header=True)
     title_principals = title_principals.filter(title_principals.category != 'self') #remove 'self'
-    title_principals = title_principals.filter(title_principals.category != 'director') #remove directors
-    title_principals = title_principals.filter(title_principals.category != 'writer') #remove writer
     title_principals = title_principals.select('tconst', 'nconst', 'category') #remove unecessary columns
+
+    #encode people
+    people = title_principals.join(title_ratings, 'tconst') #join ratings
+    n_titles = sqlf.count('tconst').alias('n_titles') #count titles
+    average_rating = sqlf.avg('averageRating').alias('average_rating') #compute average rating
+    max_rating = sqlf.max('averageRating').alias('max_rating') #compute max rating
+    median_rating = sqlf.percentile_approx('averageRating', 0.5).alias('median_rating') #compute median rating
+    people = people.groupby('nconst').agg(n_titles, average_rating, max_rating, median_rating) #compute metrics
 
     #title_akas
     title_akas = spark.read.csv('data/title_akas.tsv', sep=r'\t', header=True)
@@ -64,9 +70,9 @@ def main():
     data = data.join(title_akas, 'tconst')
 
     #adjust for inflation
-    adjust = udf(lambda value, year: int(inflate(value, year)))
+    adjust = sqlf.udf(lambda value, year: int(inflate(value, year)))
     data = data.withColumn('budget', adjust(data.budget, data.startYear))
-    data = data.withColumn('box_offce', adjust(data.box_offce, data.startYear))
+    data = data.withColumn('box_office', adjust(data.box_office, data.startYear))
 
     #encoding genres
     GENRES = ('Action', 'Adult', 'Adventure', 'Animation', 'Biography',
@@ -74,7 +80,7 @@ def main():
         'Horror', 'Musical', 'Music', 'Mystery', 'News', 'Reality-TV', 'Romance',
         'Sci-Fi', 'Sport', 'Talk-Show', 'Thriller', 'War', 'Western')
     for genre in GENRES:
-        data = data.withColumn(genre, when(array_contains('genres', genre), 1).otherwise(0)) #add a column for each genre
+        data = data.withColumn(genre, sqlf.when(sqlf.array_contains('genres', genre), 1).otherwise(0)) #add a column for each genre
     data = data.drop('genres') #remove genres column
 
     #addition for principals (Azlan 4/25/2022)

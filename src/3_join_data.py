@@ -3,6 +3,8 @@ from pyspark.sql.types import IntegerType, FloatType
 from pyspark.sql.session import SparkSession
 from pyspark.sql.functions import split, when, array_contains
 from pyspark.sql.functions import *
+import pyspark.sql.functions as func    
+
 
 OUTPUT = 'data/data.tsv'
 
@@ -96,21 +98,27 @@ def main():
             col("writer_2"),
             col("writer_3")))).distinct()
 
-    crew_final = crew_final.withColumn('tconst1', split(crew_final['col'], ',').getItem(2)) \
+    crew_final = crew_final.withColumn('tconst', split(crew_final['col'], ',').getItem(2)) \
           .withColumn('nconst', split(crew_final['col'], ',').getItem(0)) \
-          .withColumn('category', split(crew_final['col'], ',').getItem(1)).select('tconst1', 'nconst', 'category')
+          .withColumn('category', split(crew_final['col'], ',').getItem(1)).select('tconst', 'nconst', 'category')
     
-    principals = title_principals.join(crew_final, crew_final.tconst1 == title_principals.tconst).drop('tconst1') # if movie doesn't have director or writer, removed here
-    principals = principals.join(title_ratings, title_ratings.tconst == principals.tconst)
-    principals = principals.withColumnRenamed(principals.columns[0], "tconst1") \
-        .withColumnRenamed(principals.columns[1], "nconst1") \
-        .withColumnRenamed(principals.columns[2], "category1") \
-        .withColumnRenamed(principals.columns[3], "nconst2") \
-        .withColumnRenamed(principals.columns[4], "category2") \
-        .withColumnRenamed(principals.columns[5], "tconst2") \
-        .withColumnRenamed(principals.columns[6], "averageRating") \
-        .withColumnRenamed(principals.columns[7], "numVotes")
-    
+    df = title_principals.join(title_ratings, 'tconst')
+    df2 = crew_final.join(title_ratings, 'tconst')
+    principals1 = df2.groupby('nconst').agg(countDistinct('tconst')).alias('titles_ct')
+    principals2 = df2.groupby('nconst').agg(avg('averageRating')).alias('avg_rating')
+    principals3 = df2.groupby('nconst').agg(max('averageRating')).alias('max_rating')
+    principals4 = df2.groupby('nconst').agg(func.percentile_approx("averageRating", 0.5)).alias('medn_rating')
+    principals_df1 = principals1.join(principals2, 'nconst').join(principals3, 'nconst').join(principals4, 'nconst')
+
+    principals1 = df1.groupby('nconst').agg(countDistinct('tconst')).alias('titles_ct')
+    principals2 = df1.groupby('nconst').agg(avg('averageRating')).alias('avg_rating')
+    principals3 = df1.groupby('nconst').agg(max('averageRating')).alias('max_rating')
+    principals4 = df1.groupby('nconst').agg(func.percentile_approx("averageRating", 0.5)).alias('medn_rating')
+    principals_df2 = principals1.join(principals2, 'nconst').join(principals3, 'nconst').join(principals4, 'nconst')
+
+    principals = principals_df1.union(principals_df2)
+    principals.show()
+
     
     # Encoding cast and crew (directors, writers, actors)
     #for i in new_6.select("category").distinct().collect():

@@ -8,7 +8,7 @@ from cpi import inflate
 OUTPUT = 'data/data.tsv'
 
 def main():
-    sc = SparkContext('local', '3_join_data')
+    sc = SparkContext('local', '4_join_data')
     sc.setLogLevel('ERROR')
     spark = SparkSession(sc)
 

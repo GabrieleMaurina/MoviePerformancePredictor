@@ -26,15 +26,21 @@ def main():
     with open(INPUT, 'r') as movies:
         movies = tuple(movie.split('\t')[:2] for movie in movies.read().split('\n') if movie and not movie.startswith('tconst'))
     movies = {movie[0]: [movie[1], preprocess_title(movie[1]), True, []] for movie in movies}
-    i = 0
-    for id1, (title1, _, neighbors1) in movies.items():
-        for id2, (title2, _, neighbors2) in movies.items():
-            if id1 != id2 and id1 not in neighbors2 and franchise(title1, title2):
+    edges = 0
+    tot = len(movies)
+    print(tot)
+    movies_tuple = tuple(movies.items())
+    for i in range(tot):
+        id1, (title1, pptitle1, _, neighbors1) = movies_tuple[i]
+        print(i/tot)
+        for j in range(i+1, tot):
+            id2, (title2, pptitle2, _, neighbors2) = movies_tuple[j]
+            if franchise(pptitle1, pptitle2):
                 neighbors1.append(id2)
                 neighbors2.append(id1)
-                i += 1
+                edges += 1
                 print(title1, title2)
-    print(i, len(movies))
+    print(edges, len(movies))
     #for movie in movies.values:
     #    if movie[1]:
     #        dfs(movies, movie)

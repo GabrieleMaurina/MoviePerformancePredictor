@@ -9,8 +9,8 @@ from nltk.corpus import stopwords
 OUTPUT = 'data/data.tsv'
 
 def main():
-    sc = SparkContext('local', '4_join_data')
-    sc.setLogLevel('ERROR')
+    sc = SparkContext('local', '3_join_data')
+    sc.setLogLevel('ERROR') #hide useless logging
     spark = SparkSession(sc)
 
     #title_basics

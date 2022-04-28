@@ -3,7 +3,8 @@ from pyspark.sql.types import IntegerType, FloatType
 from pyspark.sql.session import SparkSession
 import pyspark.sql.functions as sqlf
 from cpi import inflate
-
+from difflib import SequenceMatcher
+from nltk.corpus import stopwords
 
 OUTPUT = 'data/data.tsv'
 
@@ -70,9 +71,9 @@ def main():
     data = data.join(title_akas, 'tconst')
 
     #adjust for inflation
-    adjust = sqlf.udf(lambda value, year: int(inflate(value, year)))
-    data = data.withColumn('budget', adjust(data.budget, data.startYear))
-    data = data.withColumn('box_office', adjust(data.box_office, data.startYear))
+    adjust = sqlf.udf(lambda value, year: int(inflate(value, year))) #cread udf function for adjustment
+    data = data.withColumn('budget', adjust(data.budget, data.startYear)) #adjust budget
+    data = data.withColumn('box_office', adjust(data.box_office, data.startYear)) #adjust boxoffice
 
     #encoding genres
     GENRES = ('Action', 'Adult', 'Adventure', 'Animation', 'Biography',
@@ -82,6 +83,46 @@ def main():
     for genre in GENRES:
         data = data.withColumn(genre, sqlf.when(sqlf.array_contains('genres', genre), 1).otherwise(0)) #add a column for each genre
     data = data.drop('genres') #remove genres column
+
+    #encode franchise
+    STOPWORDS = set(stopwords.words('english')) #collect English stopwords
+
+    def process_title(title):
+        #remove stopwords from title
+        return ' '.join(filter(lambda w: w not in STOPWORDS, title.lower().split()))
+    process_title = sqlf.udf(process_title) #create udf function to process titles
+
+    def sim(title1, title2):
+        #check if titles are similar
+        matcher = SequenceMatcher(None, title1, title2)
+        ratio = matcher.ratio()
+        match_size = matcher.find_longest_match(0,len(title1),0,len(title2)).size
+        return ratio > 0.9 or (ratio > 0.7 and match_size > 7) or match_size > 12
+    sim = sqlf.udf(sim) #create udf function to check title similarity
+
+    def set_union(l):
+        s = set()
+        s.update(*l)
+        return s
+    set_union = sqlf.udf(set_union) #create udf function to join sets
+
+    titles = data.select('tconst', 'primaryTitle') # get list of title
+    titles = titles.withColumn('primaryTitle', process_title(titles.primaryTitle)) #remove stopwords
+    titles1 = titles.withColumnRenamed('tconst', 'tconst1').withColumnRenamed('primaryTitle', 'title1') #create titles1
+    titles2 = titles.withColumnRenamed('tconst', 'tconst2').withColumnRenamed('primaryTitle', 'title2') #create titles2
+    franchise = titles1.join(titles2) #create pairs of titles
+    franchise = franchise.where(franchise.tconst1 < franchise.tconst2) #remove duplicates
+    franchise = franchise.withColumn('edge', sim(franchise.title1, franchise.title2)) #compute edges
+    franchise = franchise.where(franchise.edge == True) #keep only pairs with edge
+    franchise = franchise.select('tconst1', 'tconst2') #keep only pair of ids
+    neighbors1 = franchise.groupBy('tconst1').agg(sqlf.collect_set('tconst2').alias('neighbors')) #compute neighbors1
+    neighbors2 = franchise.groupBy('tconst2').agg(sqlf.collect_set('tconst1').alias('neighbors')) #compute neighbors2
+    neighbors1 = neighbors1.withColumnRenamed('tconst1', 'tconst') #rename id
+    neighbors2 = neighbors2.withColumnRenamed('tconst2', 'tconst') #rename id
+    franchise = neighbors1.union(neighbors2) #union neighbors dataframes
+    franchise = franchise.groupBy('tconst').agg(sqlf.collect_list('neighbors').alias('neighbors')) #collect sets of neighbors
+    franchise = franchise.withColumn('neighbors', set_union(franchise.neighbors)) #union all sets of neighbors
+    franchise = franchise.collect()
 
     #addition for principals (Azlan 4/25/2022)
     title_crew = title_crew.withColumn("directors", concat_ws(",",col("directors")))

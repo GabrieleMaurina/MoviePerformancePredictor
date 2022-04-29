@@ -1,7 +1,7 @@
 from difflib import SequenceMatcher
 from nltk.corpus import stopwords
 
-INPUT = 'data/movies.tsv'
+INPUT = 'data/movie_franchise.csv'
 OUTPUT = 'data/franchises.tsv'
 
 STOP_WORDS = set(stopwords.words('english'))
@@ -16,18 +16,17 @@ def franchise(title1, title2):
     return ratio > 0.9 or (ratio > 0.7 and match_size > 7) or match_size > 12
 
 def dfs(movies, movie, f):
-    movie[1] = False
-    tot = 1
-    for neighbor in movies[id][2]:
+    movie[2] = False
+    movie[4] = f
+    for neighbor in movie[3]:
         neighbor = movies[neighbor]
         if neighbor[2]:
-            tot += dfs(movies, neighbor, f)
-    return tot
+            dfs(movies, neighbor, f)
 
 def main():
     with open(INPUT, 'r') as movies:
-        movies = tuple(movie.split('\t')[:2] for movie in movies.read().split('\n') if movie and not movie.startswith('tconst'))
-    movies = {movie[0]: [movie[1], preprocess_title(movie[1]), True, [], 0] for movie in movies}
+        movies = tuple(movie.split(',') for movie in movies.read().split('\n') if movie and not movie.startswith('tconst'))
+    movies = {movie[1]: [movie[5], preprocess_title(movie[5]), True, [], None] for movie in movies}
     edges = 0
     tot = len(movies)
     movies_tuple = tuple(movies.items())
@@ -39,14 +38,18 @@ def main():
                 neighbors1.append(id2)
                 neighbors2.append(id1)
                 edges += 1
+    for movie in tuple(movies.keys()):
+        if not movies[movie][3]:
+            del movies[movie]
     f = 1
     for movie in movies.values():
         if movie[2]:
-            size = dfs(movies, movie, f)
-            if size > 1:
-                f += 1
-            else:
-                movie[4] = 0
+            dfs(movies, movie, f)
+            f += 1
+    movies = tuple((movie, movies[movie][4]) for movie in movies)
+    with open(OUTPUT, 'w') as out:
+        out.write('tcont\tfranchise\n')
+        out.write('\n'.join(f'{tconst}\t{franchise}' for tconst, franchise in movies))
 
 if __name__ == '__main__':
     main()

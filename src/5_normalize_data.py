@@ -16,7 +16,7 @@ INTERVALS = {
     'averageRating': AVERAGE_RATING,
     'numVotes': (10000, 1000000),
     'releases': (1, 60),
-    'franchise_titles': (0, 5),
+    'franchise_titles': (1, 5),
     'franchise_average_rating': AVERAGE_RATING,
     'franchise_max_rating': AVERAGE_RATING,
     'franchise_median_rating': AVERAGE_RATING,

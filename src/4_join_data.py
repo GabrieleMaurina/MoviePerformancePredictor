@@ -49,6 +49,7 @@ def main():
     max_rating = sqlf.max('averageRating').alias('max_rating') #compute max rating
     median_rating = sqlf.percentile_approx('averageRating', 0.5).alias('median_rating') #compute median rating
     people = people.groupby('nconst').agg(n_titles, average_rating, max_rating, median_rating) #compute metrics
+    people = people.join(title_principals, 'nconst')
 
     #title_akas
     title_akas = spark.read.csv('data/title_akas.tsv', sep=r'\t', header=True)

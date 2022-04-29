@@ -14,17 +14,18 @@ class MLP():
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, data):
+    def __init__(self, data, y_keys=('box_office', 'audience_score', 'critics_score', 'averageRating')):
         self.data = data
+        if isinstance(y_keys, str): y_keys = (y_keys,)
+        self.y_keys = y_keys
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         row = self.data[idx].asDict()
-        y_keys = ('box_office', 'audience_score', 'critics_score', 'averageRating')
-        x = torch.FloatTensor(tuple(float(row[k]) for k in row if k not in y_keys))
-        y = torch.FloatTensor(tuple(float(row[k]) for k in y_keys))
+        x = torch.FloatTensor(tuple(float(row[k]) for k in row if k not in self.y_keys))
+        y = torch.FloatTensor(tuple(float(row[k]) for k in self.y_keys))
         return x, y
 
 def train(model, epoches, dataloader):
@@ -46,8 +47,14 @@ def train(model, epoches, dataloader):
               losses = []
               average_loss = avg
 
-mlp = MLP((37, 37, 4), lr=0.001)
-print(mlp.model)
+mlp4 = MLP((37, 37, 4), lr=0.001)
+print(mlp4.model)
 train_set = Dataset(dataset)
 dataloader = torch.utils.data.DataLoader(train_set, batch_size=50, shuffle=True)
-train(mlp, 100, dataloader)
+train(mlp4, 40, dataloader)
+
+mlp_rating = MLP((40, 40, 1), lr=0.0001)
+print(mlp_rating.model)
+train_set = Dataset(dataset, 'averageRating')
+dataloader = torch.utils.data.DataLoader(train_set, batch_size=50, shuffle=True)
+train(mlp_rating, 40, dataloader)

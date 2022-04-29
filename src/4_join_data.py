@@ -90,25 +90,25 @@ def main():
     franchises_data = franchises_data.select('franchise', 'tconst', 'averageRating', 'box_office') #remove unecessary columns
 
     franchise_titles = sqlf.count('tconst').alias('franchise_titles') #count titles
-    average_rating = sqlf.avg('averageRating').alias('average_rating') #compute average rating
-    max_rating = sqlf.max('averageRating').alias('max_rating') #compute max rating
-    median_rating = sqlf.percentile_approx('averageRating', 0.5).alias('median_rating') #compute median rating
+    franchise_average_rating = sqlf.avg('averageRating').alias('franchise_average_rating') #compute average rating
+    franchise_max_rating = sqlf.max('averageRating').alias('franchise_max_rating') #compute max rating
+    franchise_median_rating = sqlf.percentile_approx('averageRating', 0.5).alias('franchise_median_rating') #compute median rating
 
-    average_box_office = sqlf.avg('box_office').alias('average_box_office') #compute average box office
-    max_box_office = sqlf.max('box_office').alias('max_box_office') #compute max box office
-    median_box_office = sqlf.percentile_approx('box_office', 0.5).alias('median_box_office') #compute median box office
+    franchise_average_box_office = sqlf.avg('box_office').alias('franchise_average_box_office') #compute average box office
+    franchise_max_box_office = sqlf.max('box_office').alias('franchise_max_box_office') #compute max box office
+    franchise_median_box_office = sqlf.percentile_approx('box_office', 0.5).alias('franchise_median_box_office') #compute median box office
 
     franchises_data = franchises_data.groupBy('franchise') #group by franchise
-    franchises_data = franchises_data.agg(franchise_titles, average_rating, max_rating, median_rating, average_box_office, max_box_office, median_box_office) #compute metrics
+    franchises_data = franchises_data.agg(franchise_titles, franchise_average_rating, franchise_max_rating, franchise_median_rating, franchise_average_box_office, franchise_max_box_office, franchise_median_box_office) #compute metrics
     data = data.join(franchises, 'tconst').join(franchises_data, 'franchise', 'left') #join data and franchises
     data = data.drop('franchise') #remove franchise id
     data = data.withColumn('franchise_titles', sqlf.coalesce(data.franchise_titles, sqlf.lit(1.0))) #franchise_titles default value 1
-    data = data.withColumn('average_rating', sqlf.coalesce(data.average_rating, sqlf.lit(0.0))) #average_rating default value 0
-    data = data.withColumn('max_rating', sqlf.coalesce(data.max_rating, sqlf.lit(0.0))) #max_rating default value 0
-    data = data.withColumn('median_rating', sqlf.coalesce(data.median_rating, sqlf.lit(0.0))) #median_rating default value 0
-    data = data.withColumn('average_box_office', sqlf.coalesce(data.average_box_office, sqlf.lit(0.0))) #average_box_office default value 0
-    data = data.withColumn('max_box_office', sqlf.coalesce(data.max_box_office, sqlf.lit(0.0))) #max_box_office default value 0
-    data = data.withColumn('median_box_office', sqlf.coalesce(data.median_box_office, sqlf.lit(0.0))) #median_box_office default value 0
+    data = data.withColumn('franchise_average_rating', sqlf.coalesce(data.franchise_average_rating, sqlf.lit(0.0))) #franchise_average_rating default value 0
+    data = data.withColumn('franchise_max_rating', sqlf.coalesce(data.franchise_max_rating, sqlf.lit(0.0))) #franchise_max_rating default value 0
+    data = data.withColumn('franchise_median_rating', sqlf.coalesce(data.franchise_median_rating, sqlf.lit(0.0))) #franchise_median_rating default value 0
+    data = data.withColumn('franchise_average_box_office', sqlf.coalesce(data.franchise_average_box_office, sqlf.lit(0.0))) #franchise_average_box_office default value 0
+    data = data.withColumn('franchise_max_box_office', sqlf.coalesce(data.franchise_max_box_office, sqlf.lit(0.0))) #franchise_max_box_office default value 0
+    data = data.withColumn('franchise_median_box_office', sqlf.coalesce(data.franchise_median_box_office, sqlf.lit(0.0))) #franchise_median_box_office default value 0
 
     #addition for principals (Azlan 4/25/2022)
     title_crew = title_crew.withColumn("directors", concat_ws(",",col("directors")))

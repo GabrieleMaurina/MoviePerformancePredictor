@@ -8,6 +8,14 @@ from nltk.corpus import stopwords
 
 OUTPUT = 'data/data.tsv'
 
+def save_table(dataframe, path, header=True, separator='\t'):
+    table = dataframe.collect()
+    if header:
+        table.insert(0, dataframe.columns)
+    with open(path, 'w') as out:
+        for row in table:
+            out.write(separator.join(str(value) for value in row) + '\n')
+
 def main():
     sc = SparkContext('local', '3_join_data')
     sc.setLogLevel('ERROR') #hide useless logging
@@ -84,7 +92,7 @@ def main():
     for genre in GENRES:
         data = data.withColumn(genre, sqlf.when(sqlf.array_contains('genres', genre), 1).otherwise(0)) #add a column for each genre
     data = data.drop('genres') #remove genres column
-    
+
     #franchises
     franchises = spark.read.csv('data/franchises.tsv', sep=r'\t', header=True)
     franchises_data = franchises.join(data, 'tconst') #join with data
@@ -162,6 +170,9 @@ def main():
     #for i in new_6.select("category").distinct().collect():
     #    new_6 = new_6.withColumn(i, when(new_6['category'].contains(i), nconst).otherwise(0))
     #new_6.show()
+
+    #save data
+    save_table(data, 'data/data.tsv')
 
 if __name__ == '__main__':
     main()

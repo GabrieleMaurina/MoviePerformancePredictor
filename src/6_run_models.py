@@ -27,13 +27,10 @@ class Dataset(torch.utils.data.Dataset):
         y = torch.FloatTensor(tuple(float(row[k]) for k in y_keys))
         return x, y
 
-mlp = MLP((37, 37, 37, 37, 4))
-print(mlp.model)
-train_set = Dataset(dataset)
-dataloader = torch.utils.data.DataLoader(train_set, batch_size=32, shuffle=True)
-
 def train(model, epoches, dataloader):
-    i = 0
+    k = 1000
+    losses = []
+    average_loss = 1.0
     for epoch in range(epoches):
         for x, y in dataloader:
           model.optimizer.zero_grad()
@@ -41,8 +38,16 @@ def train(model, epoches, dataloader):
           loss = model.loss_function(outputs, y)
           loss.backward()
           model.optimizer.step()
-          i+=1
-          if i % 1000 == 0:
-              print(loss.item())
+          losses.append(loss.item())
+          if len(losses) == k:
+              avg = sum(losses)/k
+              print(avg)
+              #if avg > average_loss: return
+              losses = []
+              average_loss = avg
 
+mlp = MLP((37, 37, 4), lr=0.001)
+print(mlp.model)
+train_set = Dataset(dataset)
+dataloader = torch.utils.data.DataLoader(train_set, batch_size=50, shuffle=True)
 train(mlp, 100, dataloader)

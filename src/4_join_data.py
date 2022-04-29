@@ -85,7 +85,30 @@ def main():
     data = data.drop('genres') #remove genres column
     
     #franchises
-    
+    franchises = spark.read.csv('data/franchises.tsv', sep=r'\t', header=True)
+    franchises_data = franchises.join(data, 'tconst') #join with data
+    franchises_data = franchises_data.select('franchise', 'tconst', 'averageRating', 'box_office') #remove unecessary columns
+
+    franchise_titles = sqlf.count('tconst').alias('franchise_titles') #count titles
+    average_rating = sqlf.avg('averageRating').alias('average_rating') #compute average rating
+    max_rating = sqlf.max('averageRating').alias('max_rating') #compute max rating
+    median_rating = sqlf.percentile_approx('averageRating', 0.5).alias('median_rating') #compute median rating
+
+    average_box_office = sqlf.avg('box_office').alias('average_box_office') #compute average box office
+    max_box_office = sqlf.max('box_office').alias('max_box_office') #compute max box office
+    median_box_office = sqlf.percentile_approx('box_office', 0.5).alias('median_box_office') #compute median box office
+
+    franchises_data = franchises_data.groupBy('franchise') #group by franchise
+    franchises_data = franchises_data.agg(franchise_titles, average_rating, max_rating, median_rating, average_box_office, max_box_office, median_box_office) #compute metrics
+    data = data.join(franchises, 'tconst').join(franchises_data, 'franchise', 'left') #join data and franchises
+    data = data.drop('franchise') #remove franchise id
+    data = data.withColumn('franchise_titles', sqlf.coalesce(data.franchise_titles, sqlf.lit(1.0))) #franchise_titles default value 1
+    data = data.withColumn('average_rating', sqlf.coalesce(data.average_rating, sqlf.lit(0.0))) #average_rating default value 0
+    data = data.withColumn('max_rating', sqlf.coalesce(data.max_rating, sqlf.lit(0.0))) #max_rating default value 0
+    data = data.withColumn('median_rating', sqlf.coalesce(data.median_rating, sqlf.lit(0.0))) #median_rating default value 0
+    data = data.withColumn('average_box_office', sqlf.coalesce(data.average_box_office, sqlf.lit(0.0))) #average_box_office default value 0
+    data = data.withColumn('max_box_office', sqlf.coalesce(data.max_box_office, sqlf.lit(0.0))) #max_box_office default value 0
+    data = data.withColumn('median_box_office', sqlf.coalesce(data.median_box_office, sqlf.lit(0.0))) #median_box_office default value 0
 
     #addition for principals (Azlan 4/25/2022)
     title_crew = title_crew.withColumn("directors", concat_ws(",",col("directors")))

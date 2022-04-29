@@ -48,7 +48,7 @@ def main():
             f += 1
     movies = tuple((movie, movies[movie][4]) for movie in movies)
     with open(OUTPUT, 'w') as out:
-        out.write('tcont\tfranchise\n')
+        out.write('tconst\tfranchise\n')
         out.write('\n'.join(f'{tconst}\t{franchise}' for tconst, franchise in movies))
 
 if __name__ == '__main__':

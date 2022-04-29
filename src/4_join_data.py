@@ -28,7 +28,7 @@ def main():
     title_basics = title_basics.filter(title_basics.titleType == 'movie') #remove non-movies
     title_basics = title_basics.filter(title_basics.isAdult == '0') #remove porn
     title_basics = title_basics.filter(title_basics.runtimeMinutes > 30) #remove short movies
-    title_basics = title_basics.filter(title_basics.startYear > 1980) #remove pre-1980 movies
+    title_basics = title_basics.filter(title_basics.startYear > 1969) #remove pre-1970 movies
     title_basics = title_basics.filter(title_basics.startYear < 2020) #remove post-2019 movies
     title_basics = title_basics.withColumn('genres', sqlf.split(title_basics.genres, ',')) #split list of genres
     title_basics = title_basics.select('tconst','primaryTitle','startYear','runtimeMinutes','genres') #remove unecessary columns

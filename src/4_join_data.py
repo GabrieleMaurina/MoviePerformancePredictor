@@ -100,7 +100,7 @@ def main():
 
     franchises_data = franchises_data.groupBy('franchise') #group by franchise
     franchises_data = franchises_data.agg(franchise_titles, franchise_average_rating, franchise_max_rating, franchise_median_rating, franchise_average_box_office, franchise_max_box_office, franchise_median_box_office) #compute metrics
-    data = data.join(franchises, 'tconst').join(franchises_data, 'franchise', 'left') #join data and franchises
+    data = data.join(franchises, 'tconst', 'left').join(franchises_data, 'franchise', 'left') #join data and franchises
     data = data.drop('franchise') #remove franchise id
     data = data.withColumn('franchise_titles', sqlf.coalesce(data.franchise_titles, sqlf.lit(1.0))) #franchise_titles default value 1
     data = data.withColumn('franchise_average_rating', sqlf.coalesce(data.franchise_average_rating, sqlf.lit(0.0))) #franchise_average_rating default value 0

@@ -1,27 +1,19 @@
-from scipy.stats import pearsonr
-from sklearn import linear_model
-import pandas as pd
-import seaborn as sn
-import matplotlib.pyplot as plt
+from pyspark import SparkContext
+from pyspark.sql.session import SparkSession
+from json import dump
 
-# Pearson coefficient
-def corr_vars(var1, var2):
-  corr, _ = pearsonr(var1, var2)
-  return corr
+def main():
+    sc = SparkContext('local', '7_compute_correlations')
+    sc.setLogLevel('ERROR') #hide useless logging
+    spark = SparkSession(sc)
 
-# Correlation matrix
-def corr_mat(ps_df):
-  df = pd.DataFrame(ps_df)
-  corr_matrix = df.corr()
-  sn.heatmap(corr_matrix, annot=True)
-  plt.show()
-  return corr_matrix
-
-# Add data file in [dataset_nm]
-#df = [dataset_nm] 
-
-for col1 in df.columns:
-  for col2 in df.columns[col1+1:]:
-    corr_vars(col1, col2)
+    normalized_data = spark.read.csv('data/normalized_data.tsv', sep=r'\t', header=True)
+    normalized_data = normalized_data.drop('tconst', 'primaryTitle')
     
-corr_mat(df)
+    cols = sorted(normalized_data.columns)
+    correlations = {col1:{col2: normalized_data.corr(col1, col2) for col2 in cols} for col1 in cols}
+    with open('data/correlations.json', 'w') as out:
+        dump(correlations, out, indent=4)
+
+if __name__ == '__main__':
+    main()

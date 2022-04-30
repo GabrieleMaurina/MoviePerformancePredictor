@@ -13,7 +13,7 @@ class MLP():
             self.layers.append(nn.Linear(self.layer_sizes[i], self.layer_sizes[i+1]))
             self.layers.append(nn.ReLU())
         self.model = nn.Sequential(*self.layers)
-        self.loss_function = nn.MSELoss()
+        self.loss_function = nn.L1Loss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
     def train(self, data, epoches, bach_size):
@@ -71,7 +71,7 @@ def main():
     spark = SparkSession(sc)
 
     normalized_data = spark.read.csv('data/normalized_data.tsv', sep=r'\t', header=True)
-    dataset = normalized_data.drop('tconst', 'primaryTitle', 'directors', 'writers').collect()
+    dataset = normalized_data.drop('tconst', 'primaryTitle').collect()
 
     print('all', train_validate((37, 37, 4), dataset))
     print('box_office', train_validate((40, 40, 1), dataset, learning_rate=0.0001, y_keys='box_office'))

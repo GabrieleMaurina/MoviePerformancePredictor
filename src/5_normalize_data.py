@@ -25,6 +25,17 @@ INTERVALS = {
     'franchise_median_box_office': BOX_OFFICE
 }
 
+def add_crew_interval(category, how_many):
+    for i in range(how_many):
+        INTERVALS[f'{category}_{i}_n_titles'] = AVERAGE_RATING
+
+add_crew_interval('director', 2)
+add_crew_interval('writer', 3)
+add_crew_interval('actor', 2)
+add_crew_interval('actress', 2)
+add_crew_interval('cinetographer', 2)
+add_crew_interval('producer', 2)
+
 def save_table(dataframe, path, header=True, separator='\t'):
     table = dataframe.collect()
     if header:

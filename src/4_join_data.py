@@ -48,7 +48,7 @@ def main():
     max_rating = sqlf.max('averageRating').alias('max_rating') #compute max rating
     median_rating = sqlf.percentile_approx('averageRating', 0.5).alias('median_rating') #compute median rating
     people = people.groupby('nconst').agg(n_titles, average_rating, max_rating, median_rating) #compute metrics
-    people = people.join(title_principals, 'nconst')
+    people = people.join(title_principals, 'nconst') #join with movies
 
     #title_akas
     title_akas = spark.read.csv('data/title_akas.tsv', sep=r'\t', header=True)
@@ -109,113 +109,34 @@ def main():
     data = data.withColumn('franchise_max_box_office', sqlf.coalesce(data.franchise_max_box_office, sqlf.lit(0.0))) #franchise_max_box_office default value 0
     data = data.withColumn('franchise_median_box_office', sqlf.coalesce(data.franchise_median_box_office, sqlf.lit(0.0))) #franchise_median_box_office default value 0
 
-    # Encoding cast and crew (Eric 4/29/2022)
-    def renameCols(df, oldstring, newstring):
-        df = df.withColumnRenamed(f'{oldstring} n_titles', f'{newstring} n_titles')
-        df = df.withColumnRenamed(f'{oldstring} avg. rating', f'{newstring} avg. rating')
-        df = df.withColumnRenamed(f'{oldstring} max. rating', f'{newstring} max. rating')
-        df = df.withColumnRenamed(f'{oldstring} med. rating', f'{newstring} med. rating')
+    #encoding cast and crew
+    def rename_cols(df, old, new):
+        df = df.withColumnRenamed(f'{old}_n_titles', f'{new}_n_titles')
+        df = df.withColumnRenamed(f'{old}_avg_rating', f'{new}_avg_rating')
+        df = df.withColumnRenamed(f'{old}_max_rating', f'{new}_max_rating')
+        df = df.withColumnRenamed(f'{old}_median_rating', f'{new}_median_rating')
+        return df.drop('nconst')
 
-        df = df.drop('nconst')
-
-        return df
-
-
-    directors = people.filter(people['category'] == 'director').select(sqlf.col('n_titles').alias('director n_titles'),
-                                                                       sqlf.col('average_rating').alias('director avg. rating'),
-                                                                       sqlf.col('max_rating').alias('director max. rating'),
-                                                                       sqlf.col('median_rating').alias('director med. rating'),
-                                                                       'nconst', 'tconst')
-    directors_unique = directors.dropDuplicates(['tconst'])
-    directors2 = directors.join(directors_unique, 'nconst', 'leftanti')
-    directors2_unique = directors2.dropDuplicates(['tconst'])
-    directors3 = directors2.join(directors2_unique, 'nconst', 'leftanti').dropDuplicates()
-    directors2 = renameCols(directors2, 'director', 'director 2')
-    directors3 = renameCols(directors3, 'director', 'director 3')
-    data = data.join(directors, 'tconst', 'left')
-    data = data.join(directors2, 'tconst', 'left')
-    data = data.join(directors3, 'tconst', 'left')
-
-
-    writers = people.filter(people['category'] == 'writer').select(sqlf.col('n_titles').alias('writer n_titles'),
-                                                                       sqlf.col('average_rating').alias('writer avg. rating'),
-                                                                       sqlf.col('max_rating').alias('writer max. rating'),
-                                                                       sqlf.col('median_rating').alias('writer med. rating'),
-                                                                       'nconst', 'tconst')
-    writers_unique = writers.dropDuplicates(['tconst'])
-    writers2 = writers.join(writers_unique, 'nconst', 'leftanti')
-    writers2_unique = writers2.dropDuplicates(['tconst'])
-    writers3 = writers2.join(writers2_unique, 'nconst', 'leftanti').dropDuplicates()
-    writers2 = renameCols(writers2, 'writer', 'writer 2')
-    writers3 = renameCols(writers3, 'writer', 'writer 3')
-    data = data.join(writers, 'tconst', 'left')
-    data = data.join(writers, 'tconst', 'left')
-    data = data.join(writers, 'tconst', 'left')
-
-
-    actors = people.filter(people['category'] == 'actor').select(sqlf.col('n_titles').alias('actor n_titles'),
-                                                                       sqlf.col('average_rating').alias('actor avg. rating'),
-                                                                       sqlf.col('max_rating').alias('actor max. rating'),
-                                                                       sqlf.col('median_rating').alias('actor med. rating'),
-                                                                       'nconst', 'tconst')
-    actors_unique = actors.dropDuplicates(['tconst'])
-    actors2 = actors.join(actors_unique, 'nconst', 'leftanti')
-    actors2_unique = actors2.dropDuplicates(['tconst'])
-    actors3 = actors2.join(actors2_unique, 'nconst', 'leftanti').dropDuplicates()
-    actors2 = renameCols(actors2, 'actor', 'actor 2')
-    actors3 = renameCols(actors3, 'actor', 'actor 3')
-    data = data.join(actors, 'tconst', 'left')
-    data = data.join(actors, 'tconst', 'left')
-    data = data.join(actors, 'tconst', 'left')
-
-
-    composers = people.filter(people['category'] == 'composer').select(sqlf.col('n_titles').alias('composer n_titles'),
-                                                                       sqlf.col('average_rating').alias('composer avg. rating'),
-                                                                       sqlf.col('max_rating').alias('composer max. rating'),
-                                                                       sqlf.col('median_rating').alias('composer med. rating'),
-                                                                       'nconst', 'tconst')
-    composers_unique = composers.dropDuplicates(['tconst'])
-    composers2 = composers.join(composers_unique, 'nconst', 'leftanti')
-    composers2_unique = composers2.dropDuplicates(['tconst'])
-    composers3 = composers2.join(composers2_unique, 'nconst', 'leftanti').dropDuplicates()
-    composers2 = renameCols(composers2, 'composer', 'composer 2')
-    composers3 = renameCols(composers3, 'composer', 'composer 3')
-    data = data.join(composers, 'tconst', 'left')
-    data = data.join(composers, 'tconst', 'left')
-    data = data.join(composers, 'tconst', 'left')
-
-    cinemetographers = people.filter(people['category'] == 'cinetographer').select(sqlf.col('n_titles').alias('cinemetographer n_titles'),
-                                                                       sqlf.col('average_rating').alias('cinemetographer avg. rating'),
-                                                                       sqlf.col('max_rating').alias('cinemetographer max. rating'),
-                                                                       sqlf.col('median_rating').alias('cinemetographer med. rating'),
-                                                                       'nconst', 'tconst')
-    cinemetographers_unique = cinemetographers.dropDuplicates(['tconst'])
-    cinemetographers2 = cinemetographers.join(cinemetographers_unique, 'nconst', 'leftanti')
-    cinemetographers2_unique = cinemetographers2.dropDuplicates(['tconst'])
-    cinemetographers3 = cinemetographers2.join(cinemetographers2_unique, 'nconst', 'leftanti').dropDuplicates()
-    cinemetographers2 = renameCols(cinemetographers2, 'cinemetographer', 'cinemetographer 2')
-    cinemetographers3 = renameCols(cinemetographers3, 'cinemetographer', 'cinemetographer 3')
-    data = data.join(cinemetographers, 'tconst', 'left')
-    data = data.join(cinemetographers, 'tconst', 'left')
-    data = data.join(cinemetographers, 'tconst', 'left')
-
-
-
-    producers = people.filter(people['category'] == 'producer').select(sqlf.col('n_titles').alias('producer n_titles'),
-                                                                       sqlf.col('average_rating').alias('producer avg. rating'),
-                                                                       sqlf.col('max_rating').alias('producer max. rating'),
-                                                                       sqlf.col('median_rating').alias('producer med. rating'),
-                                                                       'nconst', 'tconst')
-    producers_unique = producers.dropDuplicates(['tconst'])
-    producers2 = producers.join(producers_unique, 'nconst', 'leftanti')
-    producers2_unique = producers2.dropDuplicates(['tconst'])
-    producers3 = producers2.join(producers2_unique, 'nconst', 'leftanti').dropDuplicates()
-    producers2 = renameCols(producers2, 'producer', 'producer 2')
-    producers3 = renameCols(producers3, 'producer', 'producer 3')
-    data = data.join(producers, 'tconst', 'left')
-    data = data.join(producers, 'tconst', 'left')
-    data = data.join(producers, 'tconst', 'left')
-
+    def encode_category(category, how_many):
+        workers = people.where(people.category == category)
+        workers = workers.select(sqlf.col('n_titles').alias(f'{category}_n_titles'),
+                                sqlf.col('average_rating').alias(f'{category}_avg_rating'),
+                                sqlf.col('max_rating').alias(f'{category}_max_rating'),
+                                sqlf.col('median_rating').alias(f'{category}_median_rating'),
+                                'nconst', 'tconst')
+        all_next_workers = workers
+        for i in range(how_many):
+            next_workers = all_next_workers.dropDuplicates(['tconst'])
+            next_workers = rename_cols(next_workers, category, category+i)
+            data = data.join(next_workers, 'tconst', 'left')
+            all_next_workers = all_next_workers.join(next_workers, 'nconst', 'leftanti')
+    
+    encode_category('director', 2)
+    encode_category('writer', 3)
+    encode_category('actor', 2)
+    encode_category('actress', 2)
+    encode_category('cinetographer', 2)
+    encode_category('producer', 2)
 
     #save data
     data = data.sort(data.startYear)

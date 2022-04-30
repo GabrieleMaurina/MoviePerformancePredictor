@@ -28,6 +28,9 @@ INTERVALS = {
 def add_crew_interval(category, how_many):
     for i in range(how_many):
         INTERVALS[f'{category}_{i}_n_titles'] = AVERAGE_RATING
+        INTERVALS[f'{category}_{i}_avg_rating'] = AVERAGE_RATING
+        INTERVALS[f'{category}_{i}_max_rating'] = AVERAGE_RATING
+        INTERVALS[f'{category}_{i}_median_rating'] = AVERAGE_RATING
 
 add_crew_interval('director', 2)
 add_crew_interval('writer', 3)

@@ -73,11 +73,14 @@ def main():
     normalized_data = spark.read.csv('data/normalized_data.tsv', sep=r'\t', header=True)
     dataset = normalized_data.drop('tconst', 'primaryTitle').collect()
 
-    print('all', train_validate((37, 37, 4), dataset))
-    print('box_office', train_validate((40, 40, 1), dataset, learning_rate=0.0001, y_keys='box_office'))
-    print('audience_score', train_validate((40, 40, 1), dataset, learning_rate=0.0001, y_keys='audience_score'))
-    print('critics_score', train_validate((40, 40, 1), dataset, learning_rate=0.0001, y_keys='critics_score'))
-    print('averageRating', train_validate((40, 40, 1), dataset, learning_rate=0.0001, y_keys='averageRating'))
+    size = len(dataset[0])
+    s1 = size - 4
+    s2 = size - 1
+    print('all', train_validate((s1, s1, 4), dataset))
+    print('audience_score', train_validate((s2, s2, 1), dataset, learning_rate=0.0001, y_keys='audience_score'))
+    print('averageRating', train_validate((s2, s2, 1), dataset, learning_rate=0.0001, y_keys='averageRating'))
+    print('box_office', train_validate((s2, s2, 1), dataset, learning_rate=0.0001, y_keys='box_office'))
+    print('critics_score', train_validate((s2, s2, 1), dataset, learning_rate=0.0001, y_keys='critics_score'))
 
 if __name__ == '__main__':
     main()

@@ -16,7 +16,7 @@ def main():
     normalized_data = normalized_data.drop('tconst', 'primaryTitle')
 
     cols1 = ('audience_score', 'averageRating', 'box_office', 'critics_score')
-    cols2 = sorted(normalized_data.columns)
+    cols2 = sorted(col for col in normalized_data.columns if col not in cols1)
     cols = chain(combinations(cols1, 2), product(cols1, cols2))
 
     for col in cols2:

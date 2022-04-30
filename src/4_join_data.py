@@ -172,6 +172,7 @@ def main():
     #new_6.show()
 
     #save data
+    data = data.sort(data.startYear)
     save_table(data, 'data/data.tsv')
 
 if __name__ == '__main__':

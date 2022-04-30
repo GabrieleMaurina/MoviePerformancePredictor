@@ -132,9 +132,9 @@ def main():
     directors3 = directors2.join(directors2_unique, 'nconst', 'leftanti').dropDuplicates()
     directors2 = renameCols(directors2, 'director', 'director 2')
     directors3 = renameCols(directors3, 'director', 'director 3')
-    data = data.join(directors, 'tconst', 'outer')
-    data = data.join(directors2, 'tconst', 'outer')
-    data = data.join(directors3, 'tconst', 'outer')
+    data = data.join(directors, 'tconst', 'left')
+    data = data.join(directors2, 'tconst', 'left')
+    data = data.join(directors3, 'tconst', 'left')
 
 
     writers = people.filter(people['category'] == 'writer').select(sqlf.col('n_titles').alias('writer n_titles'),
@@ -148,9 +148,9 @@ def main():
     writers3 = writers2.join(writers2_unique, 'nconst', 'leftanti').dropDuplicates()
     writers2 = renameCols(writers2, 'writer', 'writer 2')
     writers3 = renameCols(writers3, 'writer', 'writer 3')
-    data = data.join(writers, 'tconst', 'outer')
-    data = data.join(writers, 'tconst', 'outer')
-    data = data.join(writers, 'tconst', 'outer')
+    data = data.join(writers, 'tconst', 'left')
+    data = data.join(writers, 'tconst', 'left')
+    data = data.join(writers, 'tconst', 'left')
 
 
     actors = people.filter(people['category'] == 'actor').select(sqlf.col('n_titles').alias('actor n_titles'),
@@ -164,9 +164,9 @@ def main():
     actors3 = actors2.join(actors2_unique, 'nconst', 'leftanti').dropDuplicates()
     actors2 = renameCols(actors2, 'actor', 'actor 2')
     actors3 = renameCols(actors3, 'actor', 'actor 3')
-    data = data.join(actors, 'tconst', 'outer')
-    data = data.join(actors, 'tconst', 'outer')
-    data = data.join(actors, 'tconst', 'outer')
+    data = data.join(actors, 'tconst', 'left')
+    data = data.join(actors, 'tconst', 'left')
+    data = data.join(actors, 'tconst', 'left')
 
 
     composers = people.filter(people['category'] == 'composer').select(sqlf.col('n_titles').alias('composer n_titles'),
@@ -180,9 +180,9 @@ def main():
     composers3 = composers2.join(composers2_unique, 'nconst', 'leftanti').dropDuplicates()
     composers2 = renameCols(composers2, 'composer', 'composer 2')
     composers3 = renameCols(composers3, 'composer', 'composer 3')
-    data = data.join(composers, 'tconst', 'outer')
-    data = data.join(composers, 'tconst', 'outer')
-    data = data.join(composers, 'tconst', 'outer')
+    data = data.join(composers, 'tconst', 'left')
+    data = data.join(composers, 'tconst', 'left')
+    data = data.join(composers, 'tconst', 'left')
 
     cinemetographers = people.filter(people['category'] == 'cinetographer').select(sqlf.col('n_titles').alias('cinemetographer n_titles'),
                                                                        sqlf.col('average_rating').alias('cinemetographer avg. rating'),
@@ -195,9 +195,9 @@ def main():
     cinemetographers3 = cinemetographers2.join(cinemetographers2_unique, 'nconst', 'leftanti').dropDuplicates()
     cinemetographers2 = renameCols(cinemetographers2, 'cinemetographer', 'cinemetographer 2')
     cinemetographers3 = renameCols(cinemetographers3, 'cinemetographer', 'cinemetographer 3')
-    data = data.join(cinemetographers, 'tconst', 'outer')
-    data = data.join(cinemetographers, 'tconst', 'outer')
-    data = data.join(cinemetographers, 'tconst', 'outer')
+    data = data.join(cinemetographers, 'tconst', 'left')
+    data = data.join(cinemetographers, 'tconst', 'left')
+    data = data.join(cinemetographers, 'tconst', 'left')
 
 
 
@@ -212,9 +212,9 @@ def main():
     producers3 = producers2.join(producers2_unique, 'nconst', 'leftanti').dropDuplicates()
     producers2 = renameCols(producers2, 'producer', 'producer 2')
     producers3 = renameCols(producers3, 'producer', 'producer 3')
-    data = data.join(producers, 'tconst', 'outer')
-    data = data.join(producers, 'tconst', 'outer')
-    data = data.join(producers, 'tconst', 'outer')
+    data = data.join(producers, 'tconst', 'left')
+    data = data.join(producers, 'tconst', 'left')
+    data = data.join(producers, 'tconst', 'left')
 
 
     #save data

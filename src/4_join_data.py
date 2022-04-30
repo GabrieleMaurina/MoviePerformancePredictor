@@ -101,13 +101,18 @@ def main():
     franchises_data = franchises_data.agg(franchise_titles, franchise_average_rating, franchise_max_rating, franchise_median_rating, franchise_average_box_office, franchise_max_box_office, franchise_median_box_office) #compute metrics
     data = data.join(franchises, 'tconst', 'left').join(franchises_data, 'franchise', 'left') #join data and franchises
     data = data.drop('franchise') #remove franchise id
-    data = data.withColumn('franchise_titles', sqlf.coalesce(data.franchise_titles, sqlf.lit(1.0))) #franchise_titles default value 1
-    data = data.withColumn('franchise_average_rating', sqlf.coalesce(data.franchise_average_rating, sqlf.lit(0.0))) #franchise_average_rating default value 0
-    data = data.withColumn('franchise_max_rating', sqlf.coalesce(data.franchise_max_rating, sqlf.lit(0.0))) #franchise_max_rating default value 0
-    data = data.withColumn('franchise_median_rating', sqlf.coalesce(data.franchise_median_rating, sqlf.lit(0.0))) #franchise_median_rating default value 0
-    data = data.withColumn('franchise_average_box_office', sqlf.coalesce(data.franchise_average_box_office, sqlf.lit(0.0))) #franchise_average_box_office default value 0
-    data = data.withColumn('franchise_max_box_office', sqlf.coalesce(data.franchise_max_box_office, sqlf.lit(0.0))) #franchise_max_box_office default value 0
-    data = data.withColumn('franchise_median_box_office', sqlf.coalesce(data.franchise_median_box_office, sqlf.lit(0.0))) #franchise_median_box_office default value 0
+    
+    def replace_none(col, v=0):
+        global data
+        data = data.withColumn(col, sqlf.coalesce(sqlf.col(col), sqlf.lit(v)))
+    
+    replace_none('franchise_titles', 1.0)
+    replace_none('franchise_average_rating')
+    replace_none('franchise_max_rating')
+    replace_none('franchise_median_rating')
+    replace_none('franchise_average_box_office')
+    replace_none('franchise_max_box_office')
+    replace_none('franchise_median_box_office')
 
     #encoding cast and crew
     def rename_cols(df, old, new):
@@ -118,6 +123,7 @@ def main():
         return df.drop('nconst')
 
     def encode_category(category, how_many):
+        global data
         workers = people.where(people.category == category)
         workers = workers.select(sqlf.col('n_titles').alias(f'{category}_n_titles'),
                                 sqlf.col('average_rating').alias(f'{category}_avg_rating'),
@@ -127,10 +133,14 @@ def main():
         all_next_workers = workers
         for i in range(how_many):
             next_workers = all_next_workers.dropDuplicates(['tconst'])
-            next_workers = rename_cols(next_workers, category, category+i)
-            data = data.join(next_workers, 'tconst', 'left')
             all_next_workers = all_next_workers.join(next_workers, 'nconst', 'leftanti')
-    
+            next_workers = rename_cols(next_workers, category, f'{category}_{i}')
+            data = data.join(next_workers, 'tconst', 'left')
+            replace_none(f'{category}_{i}_n_titles')
+            replace_none(f'{category}_{i}_avg_rating')
+            replace_none(f'{category}_{i}_max_rating')
+            replace_none(f'{category}_{i}_median_rating')
+
     encode_category('director', 2)
     encode_category('writer', 3)
     encode_category('actor', 2)

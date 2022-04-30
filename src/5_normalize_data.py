@@ -42,7 +42,7 @@ def normalize(a, b): #normalize uses currying for pickling problems
     return sqlf.udf(normilizer)
 
 def main():
-    sc = SparkContext('local', '3_join_data')
+    sc = SparkContext('local', '5_normalize_data')
     sc.setLogLevel('ERROR') #hide useless logging
     spark = SparkSession(sc)
 

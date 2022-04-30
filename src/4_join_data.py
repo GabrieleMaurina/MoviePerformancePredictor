@@ -6,8 +6,6 @@ from cpi import inflate
 from difflib import SequenceMatcher
 from nltk.corpus import stopwords
 
-OUTPUT = 'data/data.tsv'
-
 def save_table(dataframe, path, header=True, separator='\t'):
     table = dataframe.collect()
     if header:
@@ -17,7 +15,7 @@ def save_table(dataframe, path, header=True, separator='\t'):
             out.write(separator.join(str(value) for value in row) + '\n')
 
 def main():
-    sc = SparkContext('local', '3_join_data')
+    sc = SparkContext('local', '4_join_data')
     sc.setLogLevel('ERROR') #hide useless logging
     spark = SparkSession(sc)
 
@@ -32,13 +30,6 @@ def main():
     title_basics = title_basics.filter(title_basics.startYear < 2020) #remove post-2019 movies
     title_basics = title_basics.withColumn('genres', sqlf.split(title_basics.genres, ',')) #split list of genres
     title_basics = title_basics.select('tconst','primaryTitle','startYear','runtimeMinutes','genres') #remove unecessary columns
-
-    #crew
-    title_crew = spark.read.csv('data/title_crew.tsv', sep=r'\t', header=True)
-    title_crew = title_crew.filter(title_crew.directors != '\\N') #remove movies with no director
-    title_crew = title_crew.filter(title_crew.writers != '\\N') #remove movies with no writer
-    title_crew = title_crew.withColumn('directors', sqlf.split(title_crew.directors, ',')) #split list of directors
-    title_crew = title_crew.withColumn('writers', sqlf.split(title_crew.writers, ',')) #split list of writers
 
     #title_ratings
     title_ratings = spark.read.csv('data/title_ratings.tsv', sep=r'\t', header=True)
@@ -118,58 +109,6 @@ def main():
     data = data.withColumn('franchise_average_box_office', sqlf.coalesce(data.franchise_average_box_office, sqlf.lit(0.0))) #franchise_average_box_office default value 0
     data = data.withColumn('franchise_max_box_office', sqlf.coalesce(data.franchise_max_box_office, sqlf.lit(0.0))) #franchise_max_box_office default value 0
     data = data.withColumn('franchise_median_box_office', sqlf.coalesce(data.franchise_median_box_office, sqlf.lit(0.0))) #franchise_median_box_office default value 0
-
-    #addition for principals (Azlan 4/25/2022)
-    title_crew = title_crew.withColumn("directors", concat_ws(",",col("directors")))
-    title_crew = title_crew.withColumn("writers", concat_ws(",",col("writers")))
-
-    title_crew = title_crew.withColumn('director_1', split(title_crew['directors'], ',').getItem(0)) \
-           .withColumn('director_2', split(title_crew['directors'], ',').getItem(1))
-
-    title_crew = title_crew.withColumn('writer_1', split(title_crew['writers'], ',').getItem(0)) \
-           .withColumn('writer_2', split(title_crew['writers'], ',').getItem(1)) \
-           .withColumn('writer_3', split(title_crew['writers'], ',').getItem(2))
-
-    title_crew = title_crew.withColumn('writer_1', concat(col('writer_1'), lit(',writer,'), col('tconst'))) \
-           .withColumn('writer_2', concat(col('writer_2'), lit(',writer,'), col('tconst'))) \
-           .withColumn('writer_3', concat(col('writer_3'), lit(',writer,'), col('tconst')))
-
-    title_crew = title_crew.withColumn('director_1', concat(col('director_1'), lit(',director,'), col('tconst'))) \
-         .withColumn('director_2', concat(col('director_2'), lit(',director,'), col('tconst')))
-
-    crew_final = title_crew.select(explode(array(
-            col("director_1"),
-            col("director_2"),
-            col("writer_1"),
-            col("writer_2"),
-            col("writer_3")))).distinct()
-
-    crew_final = crew_final.withColumn('tconst', split(crew_final['col'], ',').getItem(2)) \
-          .withColumn('nconst', split(crew_final['col'], ',').getItem(0)) \
-          .withColumn('category', split(crew_final['col'], ',').getItem(1)).select('tconst', 'nconst', 'category')
-
-    df = title_principals.join(title_ratings, 'tconst')
-    df2 = crew_final.join(title_ratings, 'tconst')
-    principals1 = df2.groupby('nconst').agg(countDistinct('tconst')).alias('titles_ct')
-    principals2 = df2.groupby('nconst').agg(avg('averageRating')).alias('avg_rating')
-    principals3 = df2.groupby('nconst').agg(max('averageRating')).alias('max_rating')
-    principals4 = df2.groupby('nconst').agg(func.percentile_approx("averageRating", 0.5)).alias('medn_rating')
-    principals_df1 = principals1.join(principals2, 'nconst').join(principals3, 'nconst').join(principals4, 'nconst')
-
-    principals1 = df1.groupby('nconst').agg(countDistinct('tconst')).alias('titles_ct')
-    principals2 = df1.groupby('nconst').agg(avg('averageRating')).alias('avg_rating')
-    principals3 = df1.groupby('nconst').agg(max('averageRating')).alias('max_rating')
-    principals4 = df1.groupby('nconst').agg(func.percentile_approx("averageRating", 0.5)).alias('medn_rating')
-    principals_df2 = principals1.join(principals2, 'nconst').join(principals3, 'nconst').join(principals4, 'nconst')
-
-    principals = principals_df1.union(principals_df2)
-    principals.show()
-
-
-    # Encoding cast and crew (directors, writers, actors)
-    #for i in new_6.select("category").distinct().collect():
-    #    new_6 = new_6.withColumn(i, when(new_6['category'].contains(i), nconst).otherwise(0))
-    #new_6.show()
 
     #save data
     data = data.sort(data.startYear)

@@ -66,7 +66,7 @@ def train_validate(layers, dataset, learning_rate=0.001, epoches=100, batch_size
     return model.loss_function(model.model(validation_x), validation_y).item()
 
 def main():
-    sc = SparkContext('local', '3_join_data')
+    sc = SparkContext('local', '6_run_models')
     sc.setLogLevel('ERROR') #hide useless logging
     spark = SparkSession(sc)
 

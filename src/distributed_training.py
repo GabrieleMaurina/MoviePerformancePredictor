@@ -4,9 +4,13 @@ import torch
 import torch.nn as nn
 import torch.distributed as dist
 import pandas as pd
+import subprocess
+from multiprocessing import Pool
+from simpleobject import simpleobject as so
 
 NODES = ('beaverhead', 'stillwater', 'fitzgerald')
-PORT = 89111
+PORT = 29522
+DATASET = 'data/normalized_data.tsv'
 
 class DistributedMLP():
     def __init__(self, layer_sizes, learning_rate, momentum):
@@ -39,14 +43,14 @@ class DistributedMLP():
                   losses = []
                   average_loss = avg
 
-    def average_gradients():
+    def average_gradients(self):
         world_size = dist.get_world_size()
         for param in self.model.parameters():
             dist.all_reduce(param.grad.data, op=dist.ReduceOp.SUM)
             param.grad.data /= world_size
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, path, y_keys, drop_keys):
+    def __init__(self, df, y_keys, drop_keys):
         if isinstance(y_keys, str): y_keys = [y_keys,]
         else: y_keys = list(y_keys)
         if isinstance(drop_keys, str): drop_keys = [drop_keys,]
@@ -54,8 +58,7 @@ class Dataset(torch.utils.data.Dataset):
         self.y_keys = y_keys
         self.drop_keys = drop_keys
 
-        self.x = pd.read_csv(path, sep='\t')
-        self.x.drop(drop_keys, axis=1)
+        self.x = df.drop(drop_keys, axis=1)
         self.y = self.x[y_keys]
         self.x.drop(y_keys, axis=1)
 
@@ -63,27 +66,52 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.x)
 
     def __getitem__(self, idx):
-        pass
-        #x = torch.FloatTensor(tuple(float(row[k]) for k in row if k not in self.y_keys))
-        #y = torch.FloatTensor(tuple(float(row[k]) for k in self.y_keys))
-        #return x, y
+        x = torch.FloatTensor(tuple(float(v) for v in self.x.iloc[idx]))
+        y = torch.FloatTensor(tuple(float(v) for v in self.y.iloc[idx]))
+        return x, y
+
+def full_dataset(data):
+    return tuple(torch.stack(v) for v in zip(*data))
 
 def train_validate():
-    model = DistributedMLP((89, 89, 4))
-    model.train()
+    model = DistributedMLP((93, 93, 4), 0.001, 0.5)
+    train_dataset, validate_dataset = load_dataset(DATASET, split=0.9)
+    model.train(train_dataset, 10, 50)
+    validation_x, validation_y = full_dataset(validate_dataset)
+    print(model.loss_function(model.model(validation_x), validation_y).item())
+
+def load_dataset(path, split=0.9):
+    df = pd.read_csv(path, sep='\t')
+    split_size = int(len(df) * split)
+    y_keys = ('box_office', 'audience_score', 'critics_score', 'averageRating')
+    drop_keys = ('tconst', 'primaryTitle')
+    return Dataset(df[:split_size], y_keys, drop_keys), Dataset(df[split_size:], y_keys, drop_keys)
+    
+
+def run_trainer_node(address):
+    rank = NODES.index(address)
+    world_size = len(NODES)
+    master = NODES[0]
+    port = PORT
+    args = f'{rank} {world_size} {master} {port}'
+    process = subprocess.run(f'ssh {address} "cd workspace/cs535/team_project ; python3.8 src/distributed_training.py {args}"', shell=True, capture_output=True, text=True)
+    return so(returncode=process.returncode, stdout=process.stdout, stderr=process.stderr)
 
 def main():
-    Dataset('data/normalized_data.tsv', ('box_office', 'audience_score', 'critics_score', 'averageRating'), ('tconst', 'primaryTitle'))
-
-    return
     if len(sys.argv) == 1:
-        pass
+        with Pool(len(NODES)) as pool:
+            results = tuple(pool.map(run_trainer_node, NODES))
+            first = results[0]
+            print(first.stdout)
+            print(first.stderr)
     else:
         rank, world_size, master, port = sys.argv[1:5]
+        rank = int(rank)
+        world_size = int(world_size)
         os.environ['MASTER_ADDR'] = master
         os.environ['MASTER_PORT'] = port
         dist.init_process_group('gloo', rank=rank, world_size=world_size)
-        run(rank, world_size)
+        train_validate()
         dist.destroy_process_group()
 
 if __name__ == '__main__':

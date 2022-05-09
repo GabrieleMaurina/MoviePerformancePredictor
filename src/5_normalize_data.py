@@ -9,7 +9,7 @@ AVERAGE_RATING = (5, 9)
 INTERVALS = {
     'startYear': (1970, 2019),
     'box_office': BOX_OFFICE,
-    'budget': (100000, 2000000),
+    'budget': (100000, 200000000),
     'audience_score': (50, 100),
     'critics_score': (50, 100),
     'runtimeMinutes': (30, 180),

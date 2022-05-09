@@ -6,7 +6,6 @@ import torch.distributed as dist
 import pandas as pd
 import subprocess
 from multiprocessing import Pool
-from simpleobject import simpleobject as so
 
 NODES = ('beaverhead', 'stillwater', 'fitzgerald')
 PORT = 29522
@@ -31,17 +30,18 @@ class DistributedMLP():
         average_loss = 1.0
         for epoch in range(epoches):
             for x, y in dataloader:
-              self.optimizer.zero_grad()
-              loss = self.loss_function(self.model(x), y)
-              loss.backward()
-              self.average_gradients()
-              self.optimizer.step()
-              losses.append(loss.item())
-              if len(losses) == k:
-                  avg = sum(losses)/k
-                  if avg > average_loss: return
-                  losses = []
-                  average_loss = avg
+                self.optimizer.zero_grad()
+                loss = self.loss_function(self.model(x), y)
+                loss.backward()
+                self.average_gradients()
+                self.optimizer.step()
+                losses.append(loss.item())
+                if len(losses) == k:
+                    avg = sum(losses)/k
+                    print(avg)
+                    if avg > average_loss: return
+                    losses = []
+                    average_loss = avg
 
     def average_gradients(self):
         world_size = dist.get_world_size()
@@ -95,15 +95,16 @@ def run_trainer_node(address):
     port = PORT
     args = f'{rank} {world_size} {master} {port}'
     process = subprocess.run(f'ssh {address} "cd workspace/cs535/team_project ; python3.8 src/distributed_training.py {args}"', shell=True, capture_output=True, text=True)
-    return so(returncode=process.returncode, stdout=process.stdout, stderr=process.stderr)
+    return tuple(float(v) for v in process.stdout.split('\n') if v)
 
 def main():
     if len(sys.argv) == 1:
         with Pool(len(NODES)) as pool:
             results = tuple(pool.map(run_trainer_node, NODES))
-            first = results[0]
-            print(first.stdout)
-            print(first.stderr)
+            for i, red in enumerate(results):
+                print(NODES[i])
+                for v in res:
+                    print(f'\t{v:.4f}')
     else:
         rank, world_size, master, port = sys.argv[1:5]
         rank = int(rank)

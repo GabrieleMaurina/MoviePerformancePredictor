@@ -6,6 +6,7 @@ import torch.distributed as dist
 import pandas as pd
 import subprocess
 from multiprocessing import Pool
+from time import time
 
 NODES = ('beaverhead', 'stillwater', 'fitzgerald')
 PORT = 29522
@@ -99,12 +100,16 @@ def run_trainer_node(address):
 
 def main():
     if len(sys.argv) == 1:
+        print(f'Starting {len(NODES)} nodes: {", ".join(NODES)}')
+        t = time()
         with Pool(len(NODES)) as pool:
             results = tuple(pool.map(run_trainer_node, NODES))
-            for i, red in enumerate(results):
+            for i, res in enumerate(results):
                 print(NODES[i])
                 for v in res:
                     print(f'\t{v:.4f}')
+        print(f'Tot training time: {int(time()-t)}s')
+        print(f'Validation MAE: {results[0][-1]}')
     else:
         rank, world_size, master, port = sys.argv[1:5]
         rank = int(rank)
